@@ -7,8 +7,9 @@ import pandas as pd
 from pandas import DataFrame, Series  # for convenience
 import pims
 import trackpy as tp
+import numpy as np
 # %% parameter need to set
-VideoPath = "./0.5hz&3vpp-carboxylbeads.avi"
+VideoPath = "./SPACE50_2HZ&2VPP.avi"
 ImagePath = "./tempImage/"
 estimateFeatureSize = 11 # must be odd numer
 minMass = 200 # calculate the integrate minMass intensity
@@ -44,9 +45,30 @@ tp.subpx_bias(f)
 # %% locate feature in all frames
 tp.quiet()
 f = tp.batch(frames, estimateFeatureSize, minmass = minMass)
-t = tp.link(f, 8, memory=1)
+t = tp.link(f, 20, memory=1)
 plt.figure()
 tp.annotate(t[t['frame'] == 0], frames[0]);
-t1 = tp.filter_stubs(t, 200)
+t1 = tp.filter_stubs(t, 300)
+
+
+
+#%% sort and filter traj to avoid not moving particles
+Ntrajs = np.max(np.array(t1['particle'])) + 1
+minMoveDistance = 1000
+print('there are %s trajectories' % Ntrajs)
+t2 = t1[0:0]
+for i in range(Ntrajs):
+    tNew = t1[t1['particle']==i]
+    if(len(tNew) < 300):
+        continue
+    distData = tp.motion.msd(tNew,1,1,len(tNew))
+    dist = distData.iloc[-1,:]['msd']
+    print('partile index:' , i ,' traveling distance: ', dist)
+    if dist > minMoveDistance:
+        t2 = t2.append(tNew)
+
+
 h = plt.figure(1, figsize=(6,12))
-tp.plot_traj(t1);
+tp.plot_traj(t2)
+h.savefig('images.jpg')
+t2.to_csv('./pointsData.csv')
