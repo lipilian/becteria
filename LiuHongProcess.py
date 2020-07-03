@@ -8,10 +8,12 @@ from pandas import DataFrame, Series  # for convenience
 import pims
 import trackpy as tp
 import numpy as np
+import math
+from tqdm import tqdm
 # %% parameter need to set
-VideoPath = "./SPACE50_2HZ&2VPP.avi"
+VideoPath = "./1um/0.5hz-2vpp-sinewave.avi"
 ImagePath = "./tempImage/"
-estimateFeatureSize = 11 # must be odd numer
+estimateFeatureSize = 23 # must be odd numer
 minMass = 200 # calculate the integrate minMass intensity
 
 # %% read the image and save them as frame image and transfer them from rgb image
@@ -21,11 +23,11 @@ success,image = vidcap.read()
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 count = 0
 success = True
-while success:
+while success and count < 1500:
     cv2.imwrite(ImagePath + "frame%d.png" % count, image)     # save frame as PNG file
     success,image = vidcap.read()
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    print ('Read a new frame: ', success)
+    # print ('Read a new frame: ', success)
     count += 1
 
 # %% test with parameter (First run to find the min Mass)
@@ -43,32 +45,101 @@ tp.annotate(f, frames[0]);
 tp.subpx_bias(f)
 
 # %% locate feature in all frames
-tp.quiet()
 f = tp.batch(frames, estimateFeatureSize, minmass = minMass)
+# %%
 t = tp.link(f, 20, memory=1)
+# %%
 plt.figure()
 tp.annotate(t[t['frame'] == 0], frames[0]);
-t1 = tp.filter_stubs(t, 300)
+t1 = tp.filter_stubs(t, 200)
 
+# %% check raw figure(optional)
+tp.plot_traj(t1)
 
 
 #%% sort and filter traj to avoid not moving particles
+
 Ntrajs = np.max(np.array(t1['particle'])) + 1
 minMoveDistance = 1000
 print('there are %s trajectories' % Ntrajs)
 t2 = t1[0:0]
 for i in range(Ntrajs):
     tNew = t1[t1['particle']==i]
-    if(len(tNew) < 300):
+    if(len(tNew) < 100):
         continue
-    distData = tp.motion.msd(tNew,1,1,len(tNew))
-    dist = distData.iloc[-1,:]['msd']
+    #distData = tp.motion.msd(tNew,1,1,len(tNew))
+    #dist = distData.iloc[-1,:]['msd']
+    x0 = tNew.iloc[0,:]['x']
+    y0 = tNew.iloc[0,:]['y']
+    xend = tNew.iloc[-1,:]['x']
+    yend = tNew.iloc[-1,:]['y']
+    dist = np.sqrt((xend - x0)**2 + (yend - y0)**2)
     print('partile index:' , i ,' traveling distance: ', dist)
     if dist > minMoveDistance:
         t2 = t2.append(tNew)
+        
+# %%
+fig = plt.figure()
+plt.imshow(frames[0],cmap = 'gray')
+LineData = pd.read_csv('./Line.csv')
+h,w = frames[0].shape
+def getLine(x,y,theta,h):
+    startx = x + y/math.tan(math.radians(theta))
+    endx = x - (h - y)/math.tan(math.radians(theta))
+    return startx,endx
+startx1,endx1 = getLine(LineData['BX'][0], LineData['BY'][0], LineData['Angle'][0], h)
+startx2,endx2 = getLine(LineData['BX'][1], LineData['BY'][1], LineData['Angle'][1], h)
+x1 = np.array([startx1, endx1]); y =np.array([0,h])
+x2 = np.array([startx2, endx2])
+plt.plot(x1,y,'-',linewidth = 2, color='red')
+plt.plot(x2,y,'-',linewidth = 2, color='red')
 
+# %% calculate line functions
+'''
+coefficients1 = np.polyfit(x1, y, 1)
+coefficients2 = np.polyfit(x2, y, 1)
+intensity = []
+for i in range(len(frames)):
+    ValidIntensity = 0; curFrame = np.array(frames[i])
+    for curY in range(h):
+        for curX in range(w):
+            polynomial1 = np.poly1d(coefficients1)
+            polynomial2 = np.poly1d(coefficients2)
+            if curY <= polynomial2(curX) and curY >= polynomial1(curX):
+                ValidIntensity += curFrame[curY,curX]
+                curFrame[curY,curX] = 255
+    print(i)
+    intensity.append(ValidIntensity)
+'''
+# %%
+intensity = []
+for i in tqdm(range(len(frames))):
+    curFrame = frames[i][:,int(min(x1[0],x2[0])):int(max(x1[1],x2[1]))]
+    intensity.append(np.average(np.average(curFrame)))
 
-h = plt.figure(1, figsize=(6,12))
+# %%
+f = plt.figure()
+plt.plot(intensity)
+for i in range(len(frames)):
+    if(intensity[i]>36):
+        break
+plt.title('First flashing frame is ' + str(i) + '. So time is ' + str(i) + '/50 s')
+f.savefig('LEDtime.jpg')  
+# %%
+
+k,ax = plt.subplots(1, figsize=(6,12))
+ax.plot(x1,y,'-',linewidth = 2, color='red')
+ax.plot(x2,y,'-',linewidth = 2, color='red')
 tp.plot_traj(t2)
-h.savefig('images.jpg')
+
+k.savefig('images.jpg')
 t2.to_csv('./pointsData.csv')
+
+
+# %% locate
+distance = tp.motion.emsd(t2,1,1,len(t2))
+
+# %%
+t2
+
+# %%
