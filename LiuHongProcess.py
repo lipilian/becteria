@@ -11,9 +11,9 @@ import numpy as np
 import math
 from tqdm import tqdm
 # %% parameter need to set
-VideoPath = "./1um/0.5hz-2vpp-sinewave.avi"
+VideoPath = "./200nm/1hz-2vpp-squarewave.avi"
 ImagePath = "./tempImage/"
-estimateFeatureSize = 23 # must be odd numer
+estimateFeatureSize = 15 # must be odd numer
 minMass = 200 # calculate the integrate minMass intensity
 
 # %% read the image and save them as frame image and transfer them from rgb image
@@ -47,11 +47,11 @@ tp.subpx_bias(f)
 # %% locate feature in all frames
 f = tp.batch(frames, estimateFeatureSize, minmass = minMass)
 # %%
-t = tp.link(f, 20, memory=1)
+t = tp.link(f, 200, memory=1)
 # %%
 plt.figure()
 tp.annotate(t[t['frame'] == 0], frames[0]);
-t1 = tp.filter_stubs(t, 200)
+t1 = tp.filter_stubs(t, 100)
 
 # %% check raw figure(optional)
 tp.plot_traj(t1)
@@ -114,22 +114,24 @@ for i in range(len(frames)):
 # %%
 intensity = []
 for i in tqdm(range(len(frames))):
-    curFrame = frames[i][:,int(min(x1[0],x2[0])):int(max(x1[1],x2[1]))]
+    curFrame = frames[i]#[:,int(min(x1[0],x2[0])):int(max(x1[1],x2[1]))]
     intensity.append(np.average(np.average(curFrame)))
 
 # %%
 f = plt.figure()
 plt.plot(intensity)
 for i in range(len(frames)):
-    if(intensity[i]>36):
+    if(intensity[i]>18):
         break
 plt.title('First flashing frame is ' + str(i) + '. So time is ' + str(i) + '/50 s')
 f.savefig('LEDtime.jpg')  
+df = DataFrame(intensity, columns=['intensity'])
+df.to_csv('./intensity.csv')
 # %%
 
 k,ax = plt.subplots(1, figsize=(6,12))
-ax.plot(x1,y,'-',linewidth = 2, color='red')
-ax.plot(x2,y,'-',linewidth = 2, color='red')
+#ax.plot(x1,y,'-',linewidth = 2, color='red')
+#ax.plot(x2,y,'-',linewidth = 2, color='red')
 tp.plot_traj(t2)
 
 k.savefig('images.jpg')
