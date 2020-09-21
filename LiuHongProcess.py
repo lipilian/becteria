@@ -11,9 +11,9 @@ import numpy as np
 import math
 from tqdm import tqdm
 # %% parameter need to set
-VideoPath = "./200nm/1hz-2vpp-squarewave.avi"
+VideoPath = "./100nm/D1_100nm_sine_1(35fps).avi"
 ImagePath = "./tempImage/"
-estimateFeatureSize = 15 # must be odd numer
+estimateFeatureSize = 11 # must be odd numer
 minMass = 200 # calculate the integrate minMass intensity
 
 # %% read the image and save them as frame image and transfer them from rgb image
@@ -23,7 +23,7 @@ success,image = vidcap.read()
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 count = 0
 success = True
-while success and count < 1500:
+while success and count < 1800:
     cv2.imwrite(ImagePath + "frame%d.png" % count, image)     # save frame as PNG file
     success,image = vidcap.read()
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -32,22 +32,22 @@ while success and count < 1500:
 
 # %% test with parameter (First run to find the min Mass)
 frames = pims.open(ImagePath + '*.png')
-f = tp.locate(frames[0], estimateFeatureSize)
+f = tp.locate(frames[1000], estimateFeatureSize)
 # plot the mass diagram to check the orginal distribution of the mass histogram
 fig, ax = plt.subplots()
 ax.hist(f['mass'], bins=20)
 ax.set(xlabel='mass', ylabel='count');
 # %% second run and ask user input minmass
 minMass = int(input('please enter the minMass based on histogram'))
-f = tp.locate(frames[0], estimateFeatureSize, minmass= minMass)
-tp.annotate(f, frames[0]);
+f = tp.locate(frames[1000], estimateFeatureSize, minmass= minMass)
+tp.annotate(f, frames[1000]);
 # %% check subpixel accuracy
 tp.subpx_bias(f)
 
 # %% locate feature in all frames
 f = tp.batch(frames, estimateFeatureSize, minmass = minMass)
 # %%
-t = tp.link(f, 200, memory=1)
+t = tp.link(f, 50, memory=1)
 # %%
 plt.figure()
 tp.annotate(t[t['frame'] == 0], frames[0]);
@@ -121,7 +121,7 @@ for i in tqdm(range(len(frames))):
 f = plt.figure()
 plt.plot(intensity)
 for i in range(len(frames)):
-    if(intensity[i]>18):
+    if(intensity[i]>20):
         break
 plt.title('First flashing frame is ' + str(i) + '. So time is ' + str(i) + '/50 s')
 f.savefig('LEDtime.jpg')  
