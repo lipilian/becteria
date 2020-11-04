@@ -10,11 +10,13 @@ import trackpy as tp
 import numpy as np
 import math
 from tqdm import tqdm
+import os
 # %% parameter need to set
-VideoPath = "./100nm/D1_100nm_sine_1(35fps).avi"
+VideoPath = "./NoEle/LEDlight+DMM pair test.avi"
 ImagePath = "./tempImage/"
-estimateFeatureSize = 11 # must be odd numer
+estimateFeatureSize = 13 # must be odd numer
 minMass = 200 # calculate the integrate minMass intensity
+SavePath = VideoPath.split('/')[-1].split('.')[0]
 
 # %% read the image and save them as frame image and transfer them from rgb image
 # to grayscale
@@ -23,7 +25,7 @@ success,image = vidcap.read()
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 count = 0
 success = True
-while success and count < 1800:
+while success and count < 2000:
     cv2.imwrite(ImagePath + "frame%d.png" % count, image)     # save frame as PNG file
     success,image = vidcap.read()
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -47,7 +49,7 @@ tp.subpx_bias(f)
 # %% locate feature in all frames
 f = tp.batch(frames, estimateFeatureSize, minmass = minMass)
 # %%
-t = tp.link(f, 50, memory=1)
+t = tp.link(f, 50, memory=5)
 # %%
 plt.figure()
 tp.annotate(t[t['frame'] == 0], frames[0]);
@@ -60,7 +62,7 @@ tp.plot_traj(t1)
 #%% sort and filter traj to avoid not moving particles
 
 Ntrajs = np.max(np.array(t1['particle'])) + 1
-minMoveDistance = 1000
+minMoveDistance = 800
 print('there are %s trajectories' % Ntrajs)
 t2 = t1[0:0]
 for i in range(Ntrajs):
@@ -121,15 +123,15 @@ for i in tqdm(range(len(frames))):
 f = plt.figure()
 plt.plot(intensity)
 for i in range(len(frames)):
-    if(intensity[i]>20):
+    if(intensity[i]>22):
         break
-plt.title('First flashing frame is ' + str(i) + '. So time is ' + str(i) + '/50 s')
+plt.title('First flashing frame is ' + str(i) + '. So time is ' + str(i) + '/70.54 s')
 f.savefig('LEDtime.jpg')  
 df = DataFrame(intensity, columns=['intensity'])
 df.to_csv('./intensity.csv')
 # %%
 
-k,ax = plt.subplots(1, figsize=(6,12))
+k,ax = plt.subplots(1, figsize=(6,4))
 #ax.plot(x1,y,'-',linewidth = 2, color='red')
 #ax.plot(x2,y,'-',linewidth = 2, color='red')
 tp.plot_traj(t2)
