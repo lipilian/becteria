@@ -12,13 +12,14 @@ import math
 from tqdm import tqdm
 import os
 # %% parameter need to set
-VideoPath = "./calibration/1um_triangle_pulse_2.avi"
+VideoPath = "./calibration/50um space_5um beads_1_MMStack.ome.tif"
 ImagePath = "./tempImage/"
-estimateFeatureSize = 19 # must be odd numer
+estimateFeatureSize = 21 # must be odd numer
 minMass = 200 # calculate the integrate minMass intensity
-SavePath = VideoPath.split('/')[-1].split('.avi')[0]
+SavePath = VideoPath.split('/')[-1].split('.tif')[0]
 if not os.path.exists(SavePath):
     os.mkdir(SavePath)
+#frames = pims.open(VideoPath)
 # %% read the image and save them as frame image and transfer them from rgb image
 # to grayscale
 '''
@@ -35,8 +36,9 @@ while success and count < 3000:
     count += 1
 '''
 # %%
-frames = pims.PyAVReaderIndexed(VideoPath)
+frames = pims.open(VideoPath)
 
+# %%
 @pims.pipeline
 def as_grey(frame):
     red = frame[:, :, 0]
@@ -47,22 +49,22 @@ frames = as_grey(frames)
 
 # %% test with parameter (First run to find the min Mass)
 # frames = pims.open(ImagePath + '*.png')
-f = tp.locate(frames[1000], estimateFeatureSize)
+f = tp.locate(frames[100], estimateFeatureSize)
 # plot the mass diagram to check the orginal distribution of the mass histogram
 fig, ax = plt.subplots()
 ax.hist(f['mass'], bins=20)
 ax.set(xlabel='mass', ylabel='count');
 # %% second run and ask user input minmass
 minMass = int(input('please enter the minMass based on histogram'))
-f = tp.locate(frames[1000], estimateFeatureSize, minmass= minMass)
-tp.annotate(f, frames[1000]);
+f = tp.locate(frames[100], estimateFeatureSize, minmass= minMass)
+tp.annotate(f, frames[100]);
 # %% check subpixel accuracy
 tp.subpx_bias(f)
 
 # %% locate feature in all frames
 f = tp.batch(frames, estimateFeatureSize, minmass = minMass)
 # %%
-t = tp.link(f, 20, memory=5)
+t = tp.link(f, 40, memory=5)
 # %%
 plt.figure()
 tp.annotate(t[t['frame'] == 0], frames[0]);
@@ -75,7 +77,7 @@ tp.plot_traj(t1)
 #%% sort and filter traj to avoid not moving particles
 
 Ntrajs = np.max(np.array(t1['particle'])) + 1
-minMoveDistance = 400
+minMoveDistance = 50
 print('there are %s trajectories' % Ntrajs)
 t2 = t1[0:0]
 for i in range(Ntrajs):
