@@ -18,14 +18,18 @@ from skimage.transform import probabilistic_hough_line
 from itertools import combinations
 # %% glob all file path
 
-fileList = glob.glob('./calibration/*/*.tif')
+fileList = glob.glob('./calibration/*/Analysis')
+
+# %%
 for fullPath in fileList:
     
-    frames = pims.open(fullPath)
-    img = np.array(frames[0]); img = (img/256).astype('uint8')
+    frames = pims.open(os.path.join(fullPath, '*LA.TIF'))
+    img = np.array(frames[0]) 
+    #img = (img/256).astype('uint8')
+    '''
     edges = canny(img, 3,5,20)
-    lines = probabilistic_hough_line(edges, threshold=30, line_length=400,
-                                    line_gap=200)
+    lines = probabilistic_hough_line(edges, threshold=100, line_length=400,
+                                    line_gap=100)
     fig = plt.figure()
     for line1, line2 in combinations(lines, 2):
         #p0, p1 = line
@@ -47,24 +51,19 @@ for fullPath in fileList:
     yMax = np.max(np.array([y1,y0,b1,b0]))
     yMin = np.min(np.array([y1,y0,b1,b0]))
     plt.xlabel('crop with ymin = {}, ymax = {}'.format(yMin, yMax))
+    '''
+    fileName = fullPath.split('\\')[-2]
     
-    fileName = fullPath.split('\\')[-1]
-    fileName = fileName.split('_MMStack')[0]
     SavePath = fileName
     if not os.path.exists(SavePath):
         os.mkdir(SavePath)
     
     print(fileName)
-    estimateFeatureSize = 5
-    minMass = 20000
+    estimateFeatureSize = 15
+    minMass = 10000
     
     
-    @pims.pipeline
-    def cropImage(frame):
-        frame[0:yMin,:] = 0
-        frame[yMax:,:] = 0    
-        return frame
-    frames = pims.open(fullPath)
+
     
     m, n = frames.frame_shape
     t = len(frames)
@@ -73,16 +72,18 @@ for fullPath in fileList:
         temp[:,:,kk] = np.array(frames[kk])
     median = np.median(temp, axis = 2)
     
+    
+    
     @pims.pipeline
     def removeBack(frame, median):
         frame = frame - median
         return frame
     frames = removeBack(frames, median)
     
-    #break
+    break
     #frames = cropImage(frames)
     
-    fig.savefig(SavePath + '/Line.jpg')
+    #fig.savefig(SavePath + '/Line.jpg')
     
     
     
@@ -94,7 +95,7 @@ for fullPath in fileList:
 
     Ntrajs = np.max(np.array(t1['particle'])) + 1
 
-    minMoveDistance = 300
+    minMoveDistance = 1
     print('there are %s trajectories' % Ntrajs)
     t2 = t1[0:0]
     for i in range(Ntrajs):
@@ -126,15 +127,16 @@ for fullPath in fileList:
 
 # %% test
 fig = plt.figure()
-f = tp.locate(np.array(frames[1318]), estimateFeatureSize)
+estimateFeatureSize = 15
+f = tp.locate(np.array(frames[50]), estimateFeatureSize)
 
 fig, ax = plt.subplots()
-ax.hist(f['mass'], bins=20)
+ax.hist(f['mass'], bins=100)
 ax.set(xlabel='mass', ylabel='count');
 
-minMass = 20000
+minMass =10000
 fig = plt.figure()
-f = tp.locate(frames[1318], estimateFeatureSize, minmass= minMass)
-tp.annotate(f, frames[1318])
+f = tp.locate(frames[50], estimateFeatureSize, minmass= minMass)
+tp.annotate(f, frames[50])
     
 # %%
